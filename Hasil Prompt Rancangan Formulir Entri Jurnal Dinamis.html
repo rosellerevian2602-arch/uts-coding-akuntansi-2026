@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voucher Entri Jurnal - Kas Keluar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Voucher Entri Jurnal - Kas Keluar</h1>
+        
+        <!-- Header Form -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tanggal Transaksi</label>
+                <input type="date" id="transactionDate" class="mt-1 w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nomor Referensi</label>
+                <input type="text" id="referenceNumber" placeholder="Contoh: VCH-2026-001" class="mt-1 w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                <input type="text" id="description" placeholder="Deskripsi transaksi" class="mt-1 w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <!-- Tabel Jurnal -->
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">Akun</th>
+                        <th class="border border-gray-300 p-2 text-right text-sm font-semibold text-gray-700">Debit (Rp)</th>
+                        <th class="border border-gray-300 p-2 text-right text-sm font-semibold text-gray-700">Kredit (Rp)</th>
+                        <th class="border border-gray-300 p-2 text-center text-sm font-semibold text-gray-700">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="journalBody">
+                    <!-- Baris jurnal akan ditambahkan di sini -->
+                </tbody>
+                <tfoot>
+                    <tr class="bg-gray-50 font-bold">
+                        <td class="border border-gray-300 p-2 text-right">TOTAL</td>
+                        <td class="border border-gray-300 p-2 text-right" id="totalDebit">Rp 0</td>
+                        <td class="border border-gray-300 p-2 text-right" id="totalCredit">Rp 0</td>
+                        <td class="border border-gray-300 p-2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Tombol Tambah Baris -->
+        <button onclick="addRow()" class="mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+            + Tambah Baris
+        </button>
+
+        <!-- Indikator Balance -->
+        <div id="balanceIndicator" class="mb-4 p-3 rounded-lg text-center font-semibold bg-red-100 text-red-700">
+            Not Balance
+        </div>
+
+        <!-- Tombol Submit -->
+        <button id="submitBtn" disabled class="w-full bg-gray-400 text-white px-4 py-3 rounded-lg cursor-not-allowed transition">
+            Submit Jurnal
+        </button>
+    </div>
+
+    <script>
+        let rowCount = 0;
+        const accounts = [
+            { code: '101', name: 'Kas' },
+            { code: '102', name: 'Piutang Usaha' },
+            { code: '201', name: 'Utang Usaha' },
+            { code: '301', name: 'Modal' },
+            { code: '401', name: 'Pendapatan' },
+            { code: '501', name: 'Beban Gaji' },
+            { code: '502', name: 'Beban Sewa' },
+            { code: '503', name: 'Beban Listrik' },
+        ];
+
+        function addRow() {
+            rowCount++;
+            const tbody = document.getElementById('journalBody');
+            const tr = document.createElement('tr');
+            tr.id = `row-${rowCount}`;
+            
+            // Opsi akun
+            let accountOptions = '<option value="">Pilih Akun</option>';
+            accounts.forEach(acc => {
+                accountOptions += `<option value="${acc.code}">${acc.code} - ${acc.name}</option>`;
+            });
+
+            tr.innerHTML = `
+                <td class="border border-gray-300 p-1">
+                    <select class="w-full p-1 border-0 focus:ring-0 account-select" onchange="calculateTotals()">
+                        ${accountOptions}
+                    </select>
+                </td>
+                <td class="border border-gray-300 p-1">
+                    <input type="number" class="w-full p-1 text-right border-0 focus:ring-0 debit-input" 
+                           placeholder="0" min="0" step="0.01" oninput="calculateTotals()">
+                </td>
+                <td class="border border-gray-300 p-1">
+                    <input type="number" class="w-full p-1 text-right border-0 focus:ring-0 credit-input" 
+                           placeholder="0" min="0" step="0.01" oninput="calculateTotals()">
+                </td>
+                <td class="border border-gray-300 p-1 text-center">
+                    <button onclick="removeRow(${rowCount})" class="text-red-600 hover:text-red-800 font-bold">×</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            calculateTotals();
+        }
+
+        function removeRow(id) {
+            const row = document.getElementById(`row-${id}`);
+            if (row) {
+                row.remove();
+                calculateTotals();
+            }
+        }
+
+        function calculateTotals() {
+            const debitInputs = document.querySelectorAll('.debit-input');
+            const creditInputs = document.querySelectorAll('.credit-input');
+            
+            let totalDebit = 0;
+            let totalCredit = 0;
+            
+            debitInputs.forEach(input => {
+                totalDebit += parseFloat(input.value) || 0;
+            });
+            
+            creditInputs.forEach(input => {
+                totalCredit += parseFloat(input.value) || 0;
+            });
+            
+            document.getElementById('totalDebit').textContent = `Rp ${totalDebit.toLocaleString('id-ID')}`;
+            document.getElementById('totalCredit').textContent = `Rp ${totalCredit.toLocaleString('id-ID')}`;
+            
+            const balanceIndicator = document.getElementById('balanceIndicator');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (totalDebit === totalCredit && totalDebit > 0 && rowCount >= 2) {
+                balanceIndicator.textContent = '✓ Balance';
+                balanceIndicator.className = 'mb-4 p-3 rounded-lg text-center font-semibold bg-green-100 text-green-700';
+                submitBtn.disabled = false;
+                submitBtn.className = 'w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition cursor-pointer';
+            } else {
+                balanceIndicator.textContent = '✗ Not Balance';
+                balanceIndicator.className = 'mb-4 p-3 rounded-lg text-center font-semibold bg-red-100 text-red-700';
+                submitBtn.disabled = true;
+                submitBtn.className = 'w-full bg-gray-400 text-white px-4 py-3 rounded-lg cursor-not-allowed transition';
+            }
+        }
+
+        // Tambah 2 baris default saat halaman dimuat
+        window.onload = function() {
+            addRow();
+            addRow();
+        };
+    </script>
+</body>
+</html>
